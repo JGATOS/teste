@@ -1,0 +1,79 @@
+unit U_pesquisa;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Data.DB, Vcl.Grids, Vcl.DBGrids,
+  Vcl.DBCtrls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Buttons;
+
+type
+  TForm_pesquisa = class(TForm)
+    DBGrid1: TDBGrid;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    DBNavigator1: TDBNavigator;
+    Text_edit_pesquisa: TEdit;
+    Btn_Pesquisa: TBitBtn;
+    BitBtn1: TBitBtn;
+    Rad_Grupo: TRadioGroup;
+    procedure Btn_PesquisaClick(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form_pesquisa: TForm_pesquisa;
+
+implementation
+
+{$R *.dfm}
+
+uses U_cadastro;
+
+procedure TForm_pesquisa.Btn_PesquisaClick(Sender: TObject);
+
+begin
+   Form1.Q_cadastro.Close;
+   Form1.Q_cadastro.Params.Clear;
+   Form1.Q_cadastro.SQL.Add('');
+   Form1.Q_cadastro.SQL.Clear;
+   Form1.Q_cadastro.SQL.Add('select * from contato ');
+
+           begin
+            if RdBtn_codigo.Checked then
+                begin
+
+                Form1.Q_cadastro.SQL.Add('where id_contato = :pcodigo');
+                Form1.Q_cadastro.ParamByName('pcodigo').AsInteger := StrToInt(Text_edit_pesquisa.Text);
+
+                end;
+
+            if RdBtn_Nome.Checked then
+                begin
+
+                Form1.Q_cadastro.SQL.Add('where nome = :pnome');
+                Form1.Q_cadastro.ParamByName('pnome').AsString := (Text_edit_pesquisa.Text);
+
+                end;
+
+           end;
+
+      Form1.Q_cadastro.Open;
+
+            if Form1.Q_cadastro.IsEmpty then
+                begin
+                  Messagedlg('registro nao encontrado', mtInformation, [mbOk], 0);
+                end;
+
+
+
+
+   end;
+
+
+
+
+end.

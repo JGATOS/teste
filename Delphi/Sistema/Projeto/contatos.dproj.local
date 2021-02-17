@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2021/02/04 12:54:34.000.637,=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2021/02/11 13:14:35.000.082,=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2021/02/16 12:19:03.000.602,=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2021/02/16 12:22:28.000.208,D:\Nova pasta\Sistema\Forms\U_cadastro.dfm=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>2021/02/16 12:22:28.000.208,D:\Nova pasta\Sistema\Forms\U_cadastro.pas=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2021/02/16 12:22:41.000.899,D:\Nova pasta\Sistema\Projeto\contatos.dproj=C:\Users\Desenvolvedor\Documents\Embarcadero\Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>2021/02/16 15:02:31.000.108,=D:\Nova pasta\Sistema\Projeto\Unit2.pas</Transaction>
+    <Transaction>2021/02/16 15:04:37.000.866,D:\Nova pasta\Sistema\Forms\U_pesquisa.dfm=D:\Nova pasta\Sistema\Projeto\Unit2.dfm</Transaction>
+    <Transaction>2021/02/16 15:04:37.000.866,D:\Nova pasta\Sistema\Forms\U_pesquisa.pas=D:\Nova pasta\Sistema\Projeto\Unit2.pas</Transaction>
+  </Transactions>
+</BorlandProject>

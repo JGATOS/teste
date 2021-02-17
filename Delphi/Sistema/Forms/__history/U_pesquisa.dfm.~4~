@@ -1,0 +1,97 @@
+object Form_pesquisa: TForm_pesquisa
+  Left = 0
+  Top = 0
+  Caption = 'Pesquisa'
+  ClientHeight = 456
+  ClientWidth = 1000
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  KeyPreview = True
+  OldCreateOrder = False
+  WindowState = wsMaximized
+  PixelsPerInch = 96
+  TextHeight = 13
+  object DBGrid1: TDBGrid
+    Left = 0
+    Top = 65
+    Width = 1000
+    Height = 327
+    Align = alClient
+    DataSource = Form1.Ds_cadastro
+    TabOrder = 0
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clWindowText
+    TitleFont.Height = -11
+    TitleFont.Name = 'Tahoma'
+    TitleFont.Style = []
+  end
+  object Panel1: TPanel
+    Left = 0
+    Top = 392
+    Width = 1000
+    Height = 64
+    Align = alBottom
+    Color = clCream
+    ParentBackground = False
+    TabOrder = 1
+    object DBNavigator1: TDBNavigator
+      Left = 248
+      Top = 6
+      Width = 468
+      Height = 41
+      VisibleButtons = [nbFirst, nbPrior, nbNext, nbLast]
+      TabOrder = 0
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Top = 0
+    Width = 1000
+    Height = 65
+    Align = alTop
+    Color = clCream
+    ParentBackground = False
+    TabOrder = 2
+    ExplicitLeft = 8
+    ExplicitTop = -6
+    object Label1: TLabel
+      Left = 40
+      Top = 19
+      Width = 177
+      Height = 16
+      Caption = 'Codigo ou Nome do contato'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Tahoma'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object Text_edit_pesquisa: TEdit
+      Left = 40
+      Top = 38
+      Width = 250
+      Height = 21
+      TabOrder = 0
+    end
+    object Btn_Pesquisa: TBitBtn
+      Left = 352
+      Top = 19
+      Width = 90
+      Height = 40
+      Caption = 'Pesquisar'
+      TabOrder = 1
+    end
+    object BitBtn1: TBitBtn
+      Left = 464
+      Top = 19
+      Width = 90
+      Height = 40
+      TabOrder = 2
+    end
+  end
+end
