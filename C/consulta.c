@@ -2,6 +2,66 @@
 #include <stdlib.h>
 #include <locale.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
+
+bool login(char usuario, char senha){
+	char arquivo[200];
+	int strSize = strlen(arquivo);
+
+	FILE *file ;
+    file = fopen(usuario, "r");
+
+    if(file == NULL){
+     printf("Usuario nao encontrado\n"); 
+    } else {
+    while (fgets(arquivo, 200, file) != NULL){
+        char delimitador[] = ",";
+
+         // Usando strtok para dividir a string em partes
+        char *token = strtok(arquivo, delimitador);
+        char *parte1 = token;
+        char *aux1 = usuario ;
+		
+		token = strtok(NULL, delimitador);
+        char *parte2 = token;
+        char *aux2 = senha;
+		
+		if ((strcmp(aux1, usuario) == 0) && (strcmp(aux2, senha) == 0)){
+		 return true;
+		}else {
+		 return false;  
+		}
+	 	 
+ }	
+	}
+    
+}
+
+int criaUsuario(char usuario, char senha){
+	char arquivo[40];
+	
+	FILE *file ;
+    
+   if(fopen(usuario, "r") == NULL){
+     printf("Usuario nao encontrado\n"); 
+   } else{
+	
+    file = fopen(arquivo, "w");                                                     //cria o arquivo
+    fprintf(file, usuario);                                                             //salva o valor de cpf
+    fclose(file);	
+    
+    file = fopen(arquivo, "a");                                                     //abre o arquivo em modo escritra
+    fprintf(file, ",");                                                             //escreve o separador entre os valores das variaveis
+    fclose(file);
+    
+    file = fopen(arquivo, "w");                                                     //cria o arquivo
+    fprintf(file, senha);                                                             //salva o valor de cpf
+    fclose(file);
+    }
+    
+    login(usuario,senha);
+}
 
 int incluir(){
     char arquivo[40];
@@ -127,15 +187,43 @@ int main(){
 // declaracao de variaveis
 int validacao = 1;
 int opcao = 0;
+char usuario[40];
+char senha[40];
 
+	printf("\t 1 Login    \n\n");	
+	printf("\t 2 Cadastro \n\n");
+	switch (opcao)
+        {
+            case 1:
+            printf("Digite seu usuario\n");
+            scanf("%s", usuario);
+            printf("Digite sua senha\n");
+            scanf("%s", senha);
+            login(usuario,senha);
+            system("pause");
+            break;
+            
+            case 2:
+            printf("Para cadastrar: \n");
+            printf("Digite seu usuario\n");
+            scanf("%s", usuario);
+            printf("Digite sua senha\n");
+            scanf("%s", senha);
+            login(usuario,senha);
+            system("pause");
+            break;
+		}
+
+	if (login(usuario,senha)) {
     for(validacao = 1; validacao = 1;){         //laco de repeticao para continuar executando o programa
 
         setlocale(LC_ALL, "Portugese");
         system("cls");                          //comnado para limpar o terninal
         printf("\t     ------CARTORIO EBAC------\n\n");
-        printf("\t 1 - [    Incluir nome     ]\n\n");
-        printf("\t 2 - [    Consultar nome   ]\n\n");
-        printf("\t 3 - [    Deletar nome     ]\n\n");
+        printf("\t 1 - [    Incluir nome       ]\n\n");
+        printf("\t 2 - [    Consultar nome     ]\n\n");
+        printf("\t 3 - [    Deletar nome       ]\n\n");
+        printf("\t 4 - [    Sair do sistema    ]\n\n");
 
         scanf("%d", &opcao);                    //entrada de dados do usuario
         system("cls");                          //comnado para limpar o terninal
@@ -158,6 +246,12 @@ int opcao = 0;
             deletar();
             system("pause");
             break;
+            
+            case 4:
+            //printf("opcao 3 (deletar nome)\n");
+            printf("Deus te elimine");
+            return 0;
+            break;
 
             default:
             printf("opcao nao disponivel\n");
@@ -166,4 +260,5 @@ int opcao = 0;
         }
 
     }
+}
 }
