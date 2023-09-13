@@ -136,6 +136,7 @@ int opcao = 0;
         printf("\t 1 - [    Incluir nome     ]\n\n");
         printf("\t 2 - [    Consultar nome   ]\n\n");
         printf("\t 3 - [    Deletar nome     ]\n\n");
+        printf("\t 4 - [    Sair do sistema  ]\n\n");
 
         scanf("%d", &opcao);                    //entrada de dados do usuario
         system("cls");                          //comnado para limpar o terninal
@@ -157,6 +158,12 @@ int opcao = 0;
             //printf("opcao 3 (deletar nome)\n");
             deletar();
             system("pause");
+            break;
+            
+            case 4:
+            //printf("opcao 3 (deletar nome)\n");
+            printf("Deus te elimine");
+            return 0;
             break;
 
             default:
