@@ -1,0 +1,227 @@
+#include <Arduino.h>
+#include <driver/twai.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
+#include <XPT2046_Touchscreen.h>
+
+#define TFT_CS    5
+#define TFT_DC    6
+#define TFT_RST   7
+#define TFT_MOSI  35
+#define TFT_SCK   36
+
+#define TOUCH_IRQ   9     
+#define TOUCH_MISO  37    
+#define TOUCH_MOSI  35    
+#define TOUCH_CS    10    
+#define TOUCH_SCK   36    
+
+#define CAN_TX 16
+#define CAN_RX 15
+#define TFT_BL 4
+
+#define SHIFT_LIGHT_RPM 6000
+
+Adafruit_ST7789 tft = Adafruit_ST7789(&SPI, TFT_CS, TFT_DC, TFT_RST);
+XPT2046_Touchscreen ts(TOUCH_CS, TOUCH_IRQ);
+
+volatile int currentRpm = 0;
+volatile bool shiftLightAtivo = false;
+
+int currentEtanol = 0, currentAgua = 0, currentIat = 0;
+float currentCombustivelBar = 0.0;
+
+int lastEtanol = -1, lastAgua = -1, lastIat = -1;
+float lastCombustivelBar = -1.0;
+bool flashEstado = false; 
+
+enum SECONDARY_STATES { REQ_ETANOL, REQ_AGUA, REQ_IAT, REQ_FUEL_PRESS };
+SECONDARY_STATES secState = REQ_ETANOL;
+
+unsigned long lastRpmRequest = 0;
+unsigned long lastSecRequest = 0;
+unsigned long lastFlashTime = 0;
+
+// Otimizado: 20ms é o limite seguro para barramentos KWP/UDS sem causar flood na ECU
+const unsigned long rpmInterval = 20;    
+const unsigned long secInterval = 150;  
+const unsigned long flashInterval = 60; 
+
+void setupCAN() {
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT((gpio_num_t)CAN_TX, (gpio_num_t)CAN_RX, TWAI_MODE_NORMAL);
+    // Aumentado para 100 para suportar o atraso de desenho da tela TFT SPI
+    g_config.rx_queue_len = 100; 
+    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+    
+    twai_driver_install(&g_config, &t_config, &f_config);
+    twai_start();
+}
+
+// Função para recuperar o barramento caso ocorra um erro crítico (Anti-travamento de 5min)
+void verificarStatusCAN() {
+    twai_status_info_t status_info;
+    twai_get_status_info(&status_info);
+    if (status_info.state == TWAI_STATE_BUS_OFF) {
+        twai_initiate_recovery(); // Inicia recuperação física do transceptor
+        vTaskDelay(pdMS_TO_TICKS(10));
+        twai_start();             // Reinicia o driver
+    }
+}
+
+inline void sendOBDRequest(uint8_t pid) {
+    twai_message_t message;
+    message.identifier = 0x7DF;   
+    message.extd = 0;             
+    message.rtr = 0;
+    message.data_length_code = 8;
+    message.data[0] = 0x02; 
+    message.data[1] = 0x01; 
+    message.data[2] = pid;  
+    for(int i=3; i<8; i++) message.data[i] = 0x55; 
+
+    // Timeout de 2ms para não travar o processador principal se a linha cair
+    twai_transmit(&message, pdMS_TO_TICKS(2));
+}
+
+void desenharInterfaceBase(bool emAlerta) {
+    tft.fillScreen(ST77XX_BLACK); 
+    
+    if (!emAlerta) {
+        tft.setTextColor(ST77XX_WHITE);
+        tft.setTextSize(2);
+        tft.setCursor(15, 25); tft.print("ETANOL:");
+        tft.setCursor(170, 25); tft.print("AGUA:");
+        tft.setCursor(15, 135); tft.print("(IAT):");
+        tft.setCursor(170, 135); tft.print("P. COMB (BAR):");
+        
+        lastEtanol = -1; lastAgua = -1; lastIat = -1; lastCombustivelBar = -1.0;
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(TFT_BL, OUTPUT);
+    digitalWrite(TFT_BL, HIGH);
+
+    SPI.begin(TFT_SCK, TOUCH_MISO, TFT_MOSI, TOUCH_CS);
+    SPI.setFrequency(40000000); 
+
+    tft.init(240, 320);        
+    tft.setRotation(5);           
+    tft.invertDisplay(false); 
+    
+    ts.begin(SPI);
+    ts.setRotation(3);
+
+    desenharInterfaceBase(false);
+    setupCAN();
+}
+
+void loop() {
+    unsigned long currentMillis = millis();
+    
+    // Proteção preventiva contra queda do barramento automotivo
+    verificarStatusCAN();
+
+    // 1. REQUISIÇÃO DE RPM (Estabilizado em 20ms)
+    if (currentMillis - lastRpmRequest >= rpmInterval) {
+        lastRpmRequest = currentMillis;
+        sendOBDRequest(0x0C); 
+    }
+
+    // 2. REQUISIÇÃO DOS OUTROS SENSORES
+    if (!shiftLightAtivo && (currentMillis - lastSecRequest >= secInterval)) {
+        lastSecRequest = currentMillis;
+        switch (secState) {
+            case REQ_ETANOL:     sendOBDRequest(0x52); secState = REQ_AGUA; break;
+            case REQ_AGUA:       sendOBDRequest(0x05); secState = REQ_IAT; break;
+            case REQ_IAT:        sendOBDRequest(0x0F); secState = REQ_FUEL_PRESS; break;
+            case REQ_FUEL_PRESS: sendOBDRequest(0x23); secState = REQ_ETANOL; break;
+        }
+    }
+
+    // 3. CORREÇÃO CRÍTICA: Esvaziar COMPLETAMENTE o Buffer da fila com WHILE
+    twai_message_t rx_msg;
+    while (twai_receive(&rx_msg, 0) == ESP_OK) { 
+        if (rx_msg.identifier == 0x7E8 && rx_msg.data[0] >= 0x02 && rx_msg.data[1] == 0x41) {
+            
+            if (rx_msg.data[2] == 0x0C) { 
+                currentRpm = ((rx_msg.data[3] * 256) + rx_msg.data[4]) / 4;
+                
+                if (currentRpm >= SHIFT_LIGHT_RPM) {
+                    if (!shiftLightAtivo) {
+                        shiftLightAtivo = true;
+                    }
+                } else {
+                    if (shiftLightAtivo) {
+                        shiftLightAtivo = false;
+                        desenharInterfaceBase(false);
+                    }
+                }
+            } 
+            else if (!shiftLightAtivo) { 
+                switch (rx_msg.data[2]) {
+                    case 0x52: currentEtanol = rx_msg.data[3] * (100.0 / 255.0); break;
+                    case 0x05: currentAgua = rx_msg.data[3] - 40; break;
+                    case 0x0F: currentIat = rx_msg.data[3] - 40; break;
+                    case 0x23: currentCombustivelBar = (((rx_msg.data[3] * 256) + rx_msg.data[4]) * 10) / 100.0; break;
+                }
+            }
+        }
+    }
+
+    // 4. MÁQUINA DE SHIFT LIGHT OTIMIZADA
+    if (shiftLightAtivo) {
+        if (currentMillis - lastFlashTime >= flashInterval) {
+            lastFlashTime = currentMillis;
+            flashEstado = !flashEstado;
+            
+            if (flashEstado) {
+                tft.fillRect(5, 5, 310, 230, ST77XX_YELLOW);
+                tft.setTextColor(ST77XX_BLACK);
+                tft.setTextSize(5);
+                tft.setCursor(85, 95);
+                tft.print("SHIFT");
+            } else {
+                tft.fillRect(5, 5, 310, 230, ST77XX_BLACK);
+            }
+        }
+    } 
+    // 5. ATUALIZAÇÃO SEM FLICKER OU BLOQUEIO DO BARRAMENTO
+    else {
+        tft.setTextSize(3);
+        
+        if (currentEtanol != lastEtanol) {
+            tft.fillRect(15, 55, 110, 30, ST77XX_BLACK);
+            tft.setCursor(15, 55); tft.setTextColor(ST77XX_GREEN);
+            tft.print(currentEtanol); tft.print("%");
+            lastEtanol = currentEtanol;
+        }
+
+        if (currentAgua != lastAgua) {
+            tft.fillRect(170, 55, 110, 30, ST77XX_BLACK);
+            tft.setCursor(170, 55);
+            tft.setTextColor(currentAgua > 100 ? ST77XX_RED : ST77XX_CYAN);
+            tft.print(currentAgua); tft.print("C");
+            lastAgua = currentAgua;
+        }
+
+        if (currentIat != lastIat) {
+            tft.fillRect(15, 165, 110, 30, ST77XX_BLACK);
+            tft.setCursor(15, 165);
+            tft.setTextColor(currentIat > 50 ? ST77XX_ORANGE : ST77XX_BLUE);
+            tft.print(currentIat); tft.print("C");
+            lastIat = currentIat;
+        }
+
+        // Alterado de > 2.0 para uma verificação de diferença real devido a floats indesejados
+        if (abs(currentCombustivelBar - lastCombustivelBar) > 0.1) { 
+            tft.fillRect(170, 165, 130, 30, ST77XX_BLACK);
+            tft.setCursor(170, 165); tft.setTextColor(ST77XX_MAGENTA);
+            tft.print(currentCombustivelBar, 1); // 1 casa decimal para precisão de pressão
+            lastCombustivelBar = currentCombustivelBar;
+        }
+    }
+}
