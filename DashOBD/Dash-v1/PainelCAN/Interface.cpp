@@ -17,12 +17,19 @@ void iniciarDisplay() {
     SPI.begin(TFT_SCK, TOUCH_MISO, TFT_MOSI, -1);
     
     tft.init(240, 320); 
-    tft.setRotation(5);
+    tft.setRotation(5); 
     tft.invertDisplay(false);
+    
+    // =========================================================================
+    // AJUSTE CORRETO: 0x28 remove o espelhamento horizontal e mantém a barra no topo
+    // =========================================================================
+    uint8_t madctl_value = 0x28; 
+    tft.sendCommand(0x36, &madctl_value, 1);
+    
     tft.fillScreen(ST77XX_BLACK);
     
     ts.begin();
-    ts.setRotation(3); // Alinha o toque do touch com a orientação horizontal do display
+    ts.setRotation(3); 
 }
 
 void telaDeInicializacao() {
