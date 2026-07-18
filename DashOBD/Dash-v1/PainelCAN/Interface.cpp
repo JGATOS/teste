@@ -3,6 +3,12 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <XPT2046_Touchscreen.h>
+
+// IMPORTANDO AS FONTES VETORIZADAS SUAVES
+#include <Fonts/FreeSansBold24pt7b.h> // Para textos Gigantes (SHIFT, UP!)
+#include <Fonts/FreeSansBold18pt7b.h> // Para os Valores numéricos
+#include <Fonts/FreeSansBold12pt7b.h> // Para Unidades (%, C, bar) e Menu
+
 #include "Interface.h"
 
 // Inicialização das variáveis globais
@@ -20,9 +26,6 @@ void iniciarDisplay() {
     tft.setRotation(5); 
     tft.invertDisplay(false);
     
-    // =========================================================================
-    // AJUSTE CORRETO: 0x28 remove o espelhamento horizontal e mantém a barra no topo
-    // =========================================================================
     uint8_t madctl_value = 0x28; 
     tft.sendCommand(0x36, &madctl_value, 1);
     
@@ -34,17 +37,23 @@ void iniciarDisplay() {
 
 void telaDeInicializacao() {
     tft.fillScreen(ST77XX_BLACK);
-    tft.setTextSize(5);
-    tft.setCursor(65, 80);
+    
+    // Texto Gigante vetorizado para "UP! TSI"
+    tft.setFont(&FreeSansBold24pt7b);
+    tft.setTextSize(1); // Nunca escalamos fontes vetorizadas
+    
     tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(60, 110);
     tft.print("UP!");
+    
     tft.setTextColor(ST77XX_RED);
-    tft.setCursor(160, 80);
+    tft.setCursor(160, 110);
     tft.print("TSI");
 
-    tft.setTextSize(2);
+    // Texto Intermediário vetorizado
+    tft.setFont(&FreeSansBold12pt7b);
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(50, 140);
+    tft.setCursor(20, 160);
     tft.print("RACING DASHBOARD");
 
     tft.drawRect(40, 190, 240, 12, ST77XX_WHITE);
@@ -56,6 +65,9 @@ void telaDeInicializacao() {
 }
 
 void desenharLayoutBase() {
+    // Para os textos base muito pequenos (títulos), mantemos a fonte padrão no tamanho 1
+    // pois ela mapeia 1 pixel da fonte para 1 pixel da tela (fica limpo e cabe no espaço)
+    tft.setFont(NULL); 
     tft.fillScreen(ST77XX_BLACK);
     tft.drawFastHLine(0, 15, 320, ST77XX_WHITE);
     tft.drawFastHLine(0, 125, 320, ST77XX_WHITE);
@@ -88,69 +100,123 @@ void desenharBarraRPM(int currentRpm) {
 
 void atualizarValores(int etanol, int agua, int iat, float combustivelBar, 
                       int &lastEtanol, int &lastAgua, int &lastIat, float &lastCombustivelBar) {
+    
     if (etanol != lastEtanol) { 
-        tft.fillRect(12, 55, 135, 45, ST77XX_BLACK); tft.setCursor(15, 60); tft.setTextSize(4);
-        tft.setTextColor(ST77XX_WHITE); tft.print(etanol); tft.setTextSize(2);
-        tft.setTextColor(ST77XX_RED); tft.print(" %"); lastEtanol = etanol; 
+        tft.fillRect(12, 55, 135, 45, ST77XX_BLACK); 
+        tft.setFont(&FreeSansBold18pt7b); 
+        tft.setTextSize(1); 
+        tft.setTextColor(ST77XX_WHITE);
+        tft.setCursor(15, 88); 
+        tft.print(etanol); 
+        
+        int cursorX = tft.getCursorX(); 
+        tft.setFont(&FreeSansBold12pt7b); // Unidade com fonte redonda e suave
+        tft.setTextColor(ST77XX_RED); 
+        tft.setCursor(cursorX + 4, 88); // O alinhamento na base 88 deixa o texto lado a lado
+        tft.print("%"); 
+        lastEtanol = etanol; 
     }
+    
     if (agua != lastAgua) { 
-        tft.fillRect(172, 55, 135, 45, ST77XX_BLACK); tft.setCursor(175, 60); tft.setTextSize(4); 
-        tft.setTextColor(agua > 105 ? ST77XX_RED : ST77XX_WHITE); tft.print(agua); tft.setTextSize(2);
-        tft.setTextColor(ST77XX_RED); tft.print(" C"); lastAgua = agua; 
+        tft.fillRect(172, 55, 135, 45, ST77XX_BLACK); 
+        tft.setFont(&FreeSansBold18pt7b);
+        tft.setTextSize(1);
+        tft.setTextColor(agua > 105 ? ST77XX_RED : ST77XX_WHITE); 
+        tft.setCursor(175, 88); 
+        tft.print(agua); 
+        
+        int cursorX = tft.getCursorX();
+        tft.setFont(&FreeSansBold12pt7b);
+        tft.setTextColor(ST77XX_RED); 
+        tft.setCursor(cursorX + 4, 88); 
+        tft.print("C"); 
+        lastAgua = agua; 
     }
+    
     if (iat != lastIat) { 
-        tft.fillRect(12, 165, 135, 45, ST77XX_BLACK); tft.setCursor(15, 170); tft.setTextSize(4); 
-        tft.setTextColor(iat > 50 ? ST77XX_RED : ST77XX_WHITE); tft.print(iat); tft.setTextSize(2);
-        tft.setTextColor(ST77XX_RED); tft.print(" C"); lastIat = iat; 
+        tft.fillRect(12, 165, 135, 45, ST77XX_BLACK); 
+        tft.setFont(&FreeSansBold18pt7b);
+        tft.setTextSize(1);
+        tft.setTextColor(iat > 50 ? ST77XX_RED : ST77XX_WHITE); 
+        tft.setCursor(15, 198); 
+        tft.print(iat); 
+        
+        int cursorX = tft.getCursorX();
+        tft.setFont(&FreeSansBold12pt7b);
+        tft.setTextColor(ST77XX_RED); 
+        tft.setCursor(cursorX + 4, 198); 
+        tft.print("C"); 
+        lastIat = iat; 
     }
-    // CORREÇÃO: Exibição sem casas decimais (,0) e alerta vermelho configurado para menos de 30 bar
-    if (combustivelBar != lastCombustivelBar) { 
-        tft.fillRect(172, 165, 135, 45, ST77XX_BLACK); tft.setCursor(175, 170); tft.setTextSize(4); 
-        tft.setTextColor(combustivelBar < 30.0 ? ST77XX_RED : ST77XX_WHITE); tft.print(combustivelBar, 0); tft.setTextSize(2);
-        tft.setTextColor(ST77XX_RED); tft.print(" bar"); lastCombustivelBar = combustivelBar; 
+    
+    if (abs(combustivelBar - lastCombustivelBar) > 0.05 || lastCombustivelBar < 0) { 
+        tft.fillRect(172, 165, 148, 45, ST77XX_BLACK); 
+        tft.setFont(&FreeSansBold18pt7b);
+        tft.setTextSize(1);
+        tft.setTextColor(combustivelBar < 40.0 ? ST77XX_RED : ST77XX_WHITE); 
+        tft.setCursor(175, 198); 
+        tft.print(combustivelBar, 1); 
+        
+        int cursorX = tft.getCursorX();
+        tft.setFont(&FreeSansBold12pt7b);
+        tft.setTextColor(ST77XX_RED); 
+        tft.setCursor(cursorX + 4, 198); 
+        tft.print("bar"); 
+        lastCombustivelBar = combustivelBar; 
     }
 }
 
 void desenharTelaConfig() {
     tft.fillScreen(ST77XX_BLACK);
     
+    tft.setFont(&FreeSansBold12pt7b); // Menu em fonte suave
     tft.setTextColor(ST77XX_WHITE);
-    tft.setTextSize(2);
-    tft.setCursor(55, 20);
+    tft.setTextSize(1);
+    tft.setCursor(30, 35);
     tft.print("AJUSTE SHIFT LIGHT");
     
     atualizarRpmConfig();
     
     // Botão Menos [-100]
     tft.drawRoundRect(20, 140, 110, 55, 6, ST77XX_WHITE);
-    tft.setCursor(45, 158); tft.setTextColor(ST77XX_WHITE); tft.print("-100");
+    tft.setCursor(40, 178); tft.setTextColor(ST77XX_WHITE); tft.print("-100");
     
     // Botão Mais [+100]
     tft.drawRoundRect(190, 140, 110, 55, 6, ST77XX_WHITE);
-    tft.setCursor(215, 158); tft.setTextColor(ST77XX_WHITE); tft.print("+100");
+    tft.setCursor(205, 178); tft.setTextColor(ST77XX_WHITE); tft.print("+100");
     
     // Botão Salvar
     tft.drawRoundRect(105, 80, 110, 40, 6, ST77XX_RED);
-    tft.setTextSize(2); tft.setCursor(125, 92); tft.setTextColor(ST77XX_RED); tft.print("SALVAR");
+    tft.setCursor(118, 108); tft.setTextColor(ST77XX_RED); tft.print("SALVAR");
 }
 
 void atualizarRpmConfig() {
     tft.fillRect(60, 48, 200, 28, ST77XX_BLACK);
-    tft.setTextSize(3);
-    tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(90, 50);
-    tft.print(shiftLightRpm);
+    
+    tft.setFont(&FreeSansBold18pt7b); 
     tft.setTextSize(1);
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(90, 72);
+    tft.print(shiftLightRpm);
+    
+    int cursorX = tft.getCursorX();
+    tft.setFont(&FreeSansBold12pt7b);
     tft.setTextColor(ST77XX_RED);
-    tft.print(" RPM");
+    tft.setCursor(cursorX + 8, 72);
+    tft.print("RPM");
 }
 
 void desenharShiftLight() {
-    tft.fillRect(0, 0, 320, 240, ST77XX_RED);
-    tft.setTextColor(ST77XX_WHITE); tft.setTextSize(5);
-    tft.setCursor(85, 100); tft.print("SHIFT");
+    tft.fillScreen(0xFD20); 
+    
+    // SHIFT GIGANTE COM BORDAS SUAVES E ARREDONDADAS!
+    tft.setFont(&FreeSansBold24pt7b); 
+    tft.setTextColor(ST77XX_BLACK); 
+    tft.setTextSize(1);
+    tft.setCursor(80, 135); // Posicionado matematicamente no centro
+    tft.print("SHIFT");
 }
 
-void limpiarShiftLight() {
+void limparShiftLight() {
     desenharLayoutBase();
 }

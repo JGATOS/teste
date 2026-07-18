@@ -5,7 +5,7 @@
 #include <Adafruit_ST7789.h>
 #include <XPT2046_Touchscreen.h>
 #include <esp_task_wdt.h>
-#include <Preferences.h> // NOVO: Biblioteca para salvar dados permanentemente na Flash do ESP32
+#include <Preferences.h> 
 #include "Interface.h"
 
 #define CAN_TX 16
@@ -19,7 +19,7 @@ bool wasShiftLightAtivo = false;
 bool emConfiguracao = false;
 unsigned long tempoInicioToque = 0;   
 unsigned long tempoDebounceToque = 0;
-unsigned long tempoUltimoToque = 0;    // NOVO: Controla o timeout de 5 segundos para auto-salvamento
+unsigned long tempoUltimoToque = 0;    
 
 // Instancia o gerenciador de memória permanente
 Preferences preferences;
@@ -62,7 +62,6 @@ void sendOBDRequest(uint8_t pid) {
 void setup() {
     Serial.begin(115200);
     
-    // NOVO: Inicializa a memória permanente e busca o RPM salvo. Se não houver, usa 6500.
     preferences.begin("shift_light", false);
     shiftLightRpm = preferences.getInt("rpm_salvo", 6500);
     
@@ -85,13 +84,23 @@ void loop() {
             uint8_t pid = rx_msg.data[2];
             if (pid == 0x0C) { 
                 currentRpm = ((rx_msg.data[3] * 256) + rx_msg.data[4]) / 4; 
-                shiftLightAtivo = (currentRpm >= shiftLightRpm); 
-                if (!emConfiguracao) desenharBarraRPM(currentRpm); 
+                
+                if (currentRpm >= shiftLightRpm) {
+                    shiftLightAtivo = true;
+                } else if (currentRpm < (shiftLightRpm - 100)) {
+                    shiftLightAtivo = false;
+                }
+                
+                if (!emConfiguracao && !shiftLightAtivo) desenharBarraRPM(currentRpm); 
             }
             else if (pid == 0x52) currentEtanol = rx_msg.data[3] * (100.0 / 255.0);
             else if (pid == 0x05) currentAgua = rx_msg.data[3] - 40;
             else if (pid == 0x0F) currentIat = rx_msg.data[3] - 40;
-            else if (pid == 0x23) currentCombustivelBar = ((rx_msg.data[3] * 256) + rx_msg.data[4]);
+            
+            // CORREÇÃO: Fórmula de Pressão Multiplicada por 0.1 para converter para Bar corretamente
+            else if (pid == 0x23) {
+                currentCombustivelBar = ((rx_msg.data[3] * 256.0) + rx_msg.data[4]) * 0.1;
+            }
         }
     }
 
@@ -116,7 +125,6 @@ void loop() {
         touchY = constrain(touchY, 0, 240);
 
         if (!emConfiguracao) {
-            // Long Press de 1.5 segundos para entrar na tela de configuração
             if (tempoInicioToque == 0) {
                 tempoInicioToque = currentMillis; 
             } else if (currentMillis - tempoInicioToque >= 1500) {
@@ -124,24 +132,21 @@ void loop() {
                 desenharTelaConfig();
                 tempoInicioToque = 0;
                 tempoDebounceToque = currentMillis; 
-                tempoUltimoToque = currentMillis; // Dispara a contagem dos 5s de inatividade
+                tempoUltimoToque = currentMillis; 
             }
         } else {
-            // Dentro do menu de ajuste
             if (currentMillis - tempoDebounceToque > 250) {
                 tempoDebounceToque = currentMillis;
                 
-                // Botão Menos [-100] (Hitbox restrita)
                 if (touchX >= 35 && touchX <= 115 && touchY >= 145 && touchY <= 190) {
                     if (shiftLightRpm > 2000) shiftLightRpm -= 100;
                     atualizarRpmConfig();
-                    tempoUltimoToque = currentMillis; // Reseta os 5 segundos pois você interagiu
+                    tempoUltimoToque = currentMillis; 
                 }
-                // Botão Mais [+100] (Hitbox restrita)
                 else if (touchX >= 205 && touchX <= 285 && touchY >= 145 && touchY <= 190) {
                     if (shiftLightRpm < 9000) shiftLightRpm += 100;
                     atualizarRpmConfig();
-                    tempoUltimoToque = currentMillis; // Reseta os 5 segundos
+                    tempoUltimoToque = currentMillis; 
                 }
             }
         }
@@ -149,29 +154,28 @@ void loop() {
         tempoInicioToque = 0; 
     }
 
-    // NOVO: Lógica de Auto-salvamento por inatividade (5 segundos sem tocar nos botões)
     if (emConfiguracao && (currentMillis - tempoUltimoToque > 5000)) {
-        preferences.putInt("rpm_salvo", shiftLightRpm); // Grava o valor definitivo na Flash
+        preferences.putInt("rpm_salvo", shiftLightRpm); 
         emConfiguracao = false;
         desenharLayoutBase();
         
-        // Força a atualização completa dos gráficos na volta ao painel
         lastEtanol = -1; lastAgua = -1; lastIat = -1; lastCombustivelBar = -1.0;
     }
 
-    // 4. ATUALIZAÇÃO DO FRAME GRÁFICO
+    // 4. ATUALIZAÇÃO DO FRAME GRÁFICO 
     if (!emConfiguracao) {
         if (shiftLightAtivo) {
-            wasShiftLightAtivo = true; 
-            if ((currentMillis / 100) % 2 == 0) desenharShiftLight();
-            else { desenharLayoutBase(); desenharBarraRPM(currentRpm); }
+            if (!wasShiftLightAtivo) {
+                desenharShiftLight();
+                wasShiftLightAtivo = true; 
+            }
         } else {
-            if (wasShiftLightAtivo) {
+            if (wasShiftLightAtivo) { 
                 desenharLayoutBase();
-                desenharBarraRPM(currentRpm);
                 lastEtanol = -1; lastAgua = -1; lastIat = -1; lastCombustivelBar = -1.0;
                 wasShiftLightAtivo = false;
             }
+            desenharBarraRPM(currentRpm);
             atualizarValores(currentEtanol, currentAgua, currentIat, currentCombustivelBar, 
                              lastEtanol, lastAgua, lastIat, lastCombustivelBar);
         }
