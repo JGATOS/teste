@@ -19,9 +19,7 @@
 #define TOUCH_IRQ 18
 #define TOUCH_MISO 37
 
-// Agora o RPM do Shift Light é uma variável ajustável
 extern volatile int shiftLightRpm;
-
 extern Adafruit_ST7789 tft;
 extern XPT2046_Touchscreen ts;
 
@@ -33,9 +31,10 @@ void desenharBarraRPM(int currentRpm);
 void atualizarValores(int etanol, int agua, int iat, float combustivelBar,
                       int &lastEtanol, int &lastAgua, int &lastIat, float &lastCombustivelBar);
 void desenharShiftLight();
-void limparShiftLight();
 
-// Novas Funções para o Menu de Configuração
+// Novas Funções
+void desenharIndicadorLog(bool isLogging, bool blinkState);
+void desenharTelaOpcoes(bool isLogging);
 void desenharTelaConfig();
 void atualizarRpmConfig();
 

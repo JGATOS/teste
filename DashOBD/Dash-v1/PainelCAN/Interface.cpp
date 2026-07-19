@@ -4,14 +4,12 @@
 #include <Adafruit_ST7789.h>
 #include <XPT2046_Touchscreen.h>
 
-// IMPORTANDO AS FONTES VETORIZADAS SUAVES
-#include <Fonts/FreeSansBold24pt7b.h>  // Para textos Gigantes (SHIFT, UP!)
-#include <Fonts/FreeSansBold18pt7b.h>  // Para os Valores numéricos
-#include <Fonts/FreeSansBold12pt7b.h>  // Para Unidades (%, C, bar) e Menu
+#include <Fonts/FreeSansBold24pt7b.h> 
+#include <Fonts/FreeSansBold18pt7b.h> 
+#include <Fonts/FreeSansBold12pt7b.h> 
 
 #include "Interface.h"
 
-// Inicialização das variáveis globais
 volatile int shiftLightRpm = 6500;
 
 Adafruit_ST7789 tft = Adafruit_ST7789(&SPI, TFT_CS, TFT_DC, TFT_RST);
@@ -26,33 +24,25 @@ void iniciarDisplay() {
   tft.setRotation(5);
   tft.invertDisplay(false);
 
-  // AQUI ESTÁ A MÁGICA DA ROTAÇÃO:
-  // 0x28 = Paisagem Padrão. 0xE8 = Paisagem Invertida (Giro de 180 graus)
-  uint8_t madctl_value = 0xE8;
+  // 0xE8 = Paisagem Invertida (SD Card voltado para CIMA)
+  uint8_t madctl_value = 0xE8; 
   tft.sendCommand(0x36, &madctl_value, 1);
 
   tft.fillScreen(ST77XX_BLACK);
-
   ts.begin();
-  // ts.setRotation(3);
 }
 
 void telaDeInicializacao() {
   tft.fillScreen(ST77XX_BLACK);
-
-  // Texto Gigante vetorizado para "UP! TSI"
   tft.setFont(&FreeSansBold24pt7b);
-  tft.setTextSize(1);  // Nunca escalamos fontes vetorizadas
-
+  tft.setTextSize(1); 
   tft.setTextColor(ST77XX_WHITE);
   tft.setCursor(60, 110);
   tft.print("UP!");
-
   tft.setTextColor(ST77XX_RED);
   tft.setCursor(160, 110);
   tft.print("TSI");
 
-  // Texto Intermediário vetorizado
   tft.setFont(&FreeSansBold12pt7b);
   tft.setTextColor(ST77XX_WHITE);
   tft.setCursor(20, 160);
@@ -90,6 +80,14 @@ void desenharLayoutBase() {
   tft.fillRect(175, 147, 20, 2, ST77XX_RED);
 }
 
+void desenharIndicadorLog(bool isLogging, bool blinkState) {
+  // Limpa a área do indicador no canto superior direito (dentro da barra de RPM ou logo abaixo)
+  tft.fillRect(300, 18, 16, 12, ST77XX_BLACK); 
+  if (isLogging && blinkState) {
+    tft.fillCircle(308, 24, 4, ST77XX_RED);
+  }
+}
+
 void desenharBarraRPM(int currentRpm) {
   int larguraBarra = map(currentRpm, 0, shiftLightRpm, 0, 316);
   larguraBarra = constrain(larguraBarra, 0, 316);
@@ -104,9 +102,8 @@ void desenharBarraRPM(int currentRpm) {
 
 void atualizarValores(int etanol, int agua, int iat, float combustivelBar,
                       int &lastEtanol, int &lastAgua, int &lastIat, float &lastCombustivelBar) {
-
   if (etanol != lastEtanol) {
-    tft.fillRect(12, 55, 135, 45, ST77XX_BLACK);
+    tft.fillRect(12, 55, 115, 45, ST77XX_BLACK);
     tft.setFont(&FreeSansBold18pt7b);
     tft.setTextSize(1);
     tft.setTextColor(ST77XX_WHITE);
@@ -170,9 +167,41 @@ void atualizarValores(int etanol, int agua, int iat, float combustivelBar,
   }
 }
 
+void desenharTelaOpcoes(bool isLogging) {
+  tft.fillScreen(ST77XX_BLACK);
+  tft.setFont(&FreeSansBold12pt7b);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(85, 35);
+  tft.print("MENU INICIAL");
+
+  // Botão Gravar Log
+  tft.drawRoundRect(40, 60, 240, 50, 6, ST77XX_WHITE);
+  if (isLogging) {
+    tft.setTextColor(ST77XX_RED);
+    tft.setCursor(75, 93);
+    tft.print("PARAR LOG");
+  } else {
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(80, 93);
+    tft.print("GRAVAR LOG");
+  }
+
+  // Botão Ajuste Shift Light
+  tft.drawRoundRect(40, 125, 240, 50, 6, ST77XX_WHITE);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setCursor(65, 158);
+  tft.print("SHIFT LIGHT");
+
+  // Botão Voltar
+  tft.fillRoundRect(90, 195, 140, 35, 6, ST77XX_RED);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setCursor(115, 220);
+  tft.print("VOLTAR");
+}
+
 void desenharTelaConfig() {
   tft.fillScreen(ST77XX_BLACK);
-
   tft.setFont(&FreeSansBold12pt7b);
   tft.setTextColor(ST77XX_WHITE);
   tft.setTextSize(1);
@@ -184,25 +213,16 @@ void desenharTelaConfig() {
   // Botão Menos [-100]
   tft.drawRoundRect(20, 140, 110, 55, 6, ST77XX_WHITE);
   tft.setCursor(40, 178);
-  tft.setTextColor(ST77XX_WHITE);
   tft.print("-100");
 
   // Botão Mais [+100]
   tft.drawRoundRect(190, 140, 110, 55, 6, ST77XX_WHITE);
   tft.setCursor(205, 178);
-  tft.setTextColor(ST77XX_WHITE);
   tft.print("+100");
-
-  // Botão Salvar
-  tft.drawRoundRect(105, 80, 110, 40, 6, ST77XX_RED);
-  tft.setCursor(118, 108);
-  tft.setTextColor(ST77XX_RED);
-  tft.print("SALVAR");
 }
 
 void atualizarRpmConfig() {
   tft.fillRect(60, 48, 200, 28, ST77XX_BLACK);
-
   tft.setFont(&FreeSansBold18pt7b);
   tft.setTextSize(1);
   tft.setTextColor(ST77XX_WHITE);
@@ -218,15 +238,9 @@ void atualizarRpmConfig() {
 
 void desenharShiftLight() {
   tft.fillScreen(0xFD20);
-
-  // SHIFT GIGANTE COM BORDAS SUAVES E ARREDONDADAS!
   tft.setFont(&FreeSansBold24pt7b);
   tft.setTextColor(ST77XX_BLACK);
   tft.setTextSize(1);
   tft.setCursor(80, 135);
   tft.print("SHIFT");
-}
-
-void limparShiftLight() {
-  desenharLayoutBase();
 }
